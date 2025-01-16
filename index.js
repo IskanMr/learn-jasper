@@ -5,11 +5,16 @@ import cors from "cors";
 import xml from "xml2js";
 import xmlparser from "express-xml-bodyparser";
 import bodyParser from "body-parser";
+import helmet from "helmet";
 
 const app = express();
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(helmet());
+app.disable("x-powered-by");
+app.set("port", port);
 
 var corsOptions = {
   origin: "*",
@@ -26,64 +31,79 @@ const xmlOptions = {
   mergeAttrs: true,
 };
 
-const builder = new xml.Builder({
-  renderOpts: { pretty: false },
-});
-
-const bustHeaders = (request, response, next) => {
-  request.app.isXml = false;
+const bustHeaders = (req, res, next) => {
+  req.app.isXml = false;
 
   if (
-    request.headers["content-type"] === "application/xml" ||
-    request.headers["accept"] === "application/xml"
+    req.headers["content-type"] === "application/xml" ||
+    req.headers["accept"] === "application/xml"
   ) {
-    request.app.isXml = true;
+    req.app.isXml = true;
   }
 
   next();
 };
 
-const buildResponse = (response, statusCode, data, preTag) => {
-  response.format({
-    "application/json": () => {
-      response.status(statusCode).json(data);
-    },
-    "application/xml": () => {
-      response.status(statusCode).send(builder.buildObject({ [preTag]: data }));
-    },
-    default: () => {
-      // log the request and respond with 406
-      response.status(406).send("Not Acceptable");
-    },
-  });
-};
-
-// app.post("/xl", async (req, res) => {
-//   try {
-//     const data = req.data;
-//     if (!data) {
-//       return res.status(404);
-//     }
-//     res.status(200);
-//   } catch (err) {
-//     console.log(err);
-//     res.sendStatus(500);
-//   }
+// const builder = new xml.Builder({
+//   renderOpts: { pretty: false },
 // });
 
-app.post("/xl", bustHeaders, xmlparser(xmlOptions), (request, response) => {
+// const buildres = (res, statusCode, data, preTag) => {
+//   res.format({
+//     "application/json": () => {
+//       res.status(statusCode).json(data);
+//     },
+//     "application/xml": () => {
+//       res.status(statusCode).send(builder.buildObject({ [preTag]: data }));
+//     },
+//     default: () => {
+//       // log the req and respond with 406
+//       res.status(406).send("Not Acceptable");
+//     },
+//   });
+// };
+
+// const buildResponse = (response, statusCode, data, preTag) => {
+//   response.format({
+//     'application/json': () => {
+//       response.status(statusCode).json(data);
+//     },
+//     'application/xml': () => {
+//       response.status(statusCode).send(builder.buildObject({ [preTag]: data }));
+//     },
+//     'default': () => {
+//       // log the request and respond with 406
+//       response.status(406).send('Not Acceptable');
+//     }
+//   });
+// };
+
+app.post("/", async (req, res) => {
   try {
-    const data = request.body;
+    const data = req;
     if (!data) {
-      return response.status(404);
+      return res.sendStatus(404);
     }
-    response.status(200);
+    console.log(data);
+    res.status(200).send("Data received");
   } catch (err) {
     console.log(err);
-    response.sendStatus(500);
+    res.sendStatus(500);
   }
 });
 
-app.listen(process.env.PORT, () =>
-  console.log(`Server has started on port: ${process.env.PORT}`)
-);
+app.post("/xl", bustHeaders, xmlparser(xmlOptions), (req, res) => {
+  try {
+    const data = req.body;
+    if (!data) {
+      return res.sendStatus(404);
+    }
+    console.log(data);
+    res.status(200).send("Data received");
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
+});
+
+app.listen(port, () => console.log(`Server has started on port: ${port}`));
